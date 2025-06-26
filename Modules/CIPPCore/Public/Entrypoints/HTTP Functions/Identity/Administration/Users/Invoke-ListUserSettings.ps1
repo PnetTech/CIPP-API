@@ -10,14 +10,24 @@ function Invoke-ListUserSettings {
     param($Request, $TriggerMetadata)
 
     $APIName = $Request.Params.CIPPEndpoint
-    Write-LogMessage -headers $Request.Headers -API $APINAME -message 'Accessed this API' -Sev 'Debug'
-    $username = ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($request.headers.'x-ms-client-principal')) | ConvertFrom-Json).userDetails
+    $Headers = $Request.Headers
+    Write-LogMessage -headers $Headers -API $APIName -message 'Accessed this API' -Sev 'Debug'
+
+    $Username = ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Headers.'x-ms-client-principal')) | ConvertFrom-Json).userDetails
 
     try {
         $Table = Get-CippTable -tablename 'UserSettings'
         $UserSettings = Get-CIPPAzDataTableEntity @Table -Filter "RowKey eq 'allUsers'"
-        if (!$UserSettings) { $userSettings = Get-CIPPAzDataTableEntity @Table -Filter "RowKey eq '$username'" }
+        if (!$UserSettings) { $UserSettings = Get-CIPPAzDataTableEntity @Table -Filter "RowKey eq '$Username'" }
         $UserSettings = $UserSettings.JSON | ConvertFrom-Json -Depth 10 -ErrorAction SilentlyContinue
+        #Get branding settings
+        if ($UserSettings) {
+            $brandingTable = Get-CippTable -tablename 'Config'
+            $BrandingSettings = Get-CIPPAzDataTableEntity @brandingTable -Filter "RowKey eq 'BrandingSettings'"
+            if ($BrandingSettings) {
+                $UserSettings | Add-Member -MemberType NoteProperty -Name 'BrandingSettings' -Value $BrandingSettings -Force | Out-Null
+            }
+        }
         $StatusCode = [HttpStatusCode]::OK
         $Results = $UserSettings
     } catch {

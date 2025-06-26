@@ -11,7 +11,8 @@ function Invoke-ExecSendPush {
     param($Request, $TriggerMetadata)
 
     $APIName = $Request.Params.CIPPEndpoint
-    Write-LogMessage -headers $Request.Headers -API $APINAME -message 'Accessed this API' -Sev 'Debug'
+    $Headers = $Request.Headers
+    Write-LogMessage -headers $Headers -API $APIName -message 'Accessed this API' -Sev 'Debug'
 
     $TenantFilter = $Request.body.TenantFilter
     $UserEmail = $Request.body.UserEmail
@@ -51,7 +52,7 @@ function Invoke-ExecSendPush {
 
         $SPBody = [pscustomobject]@{
             appId = $MFAAppID
-        }
+        } | ConvertTo-Json -Depth 5
         $SPID = (New-GraphPostRequest -uri 'https://graph.microsoft.com/v1.0/servicePrincipals' -tenantid $TenantFilter -type POST -body $SPBody -AsApp $true).id
     }
 
